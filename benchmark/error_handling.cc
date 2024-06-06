@@ -17,6 +17,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+#include "mry/error_t.h"
+
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
@@ -24,32 +26,68 @@
 
 namespace {
 
+/**
+ * @brief plain_success describes a pure operation runtime
+ *        where no errors occure
+ */
+auto plain_success()
+  -> void
+{}
+
+/**
+ * @brief success_try_catch describes an operation runtime
+ *        in a try-catch context where no errors occure
+ */
+auto success_try_catch()
+  -> void
+try { return ; }
+catch( ... ) {}
+
+
 TEST_CASE( "error reporting mechanisms"
          , "[benchmark][expect<T>][reporting]" )
 {
   using success_t =
     std::vector<int>;
 
-  SECTION( "success" )
+  SECTION( "success : return <void>" )
   {
+    /* @note: binding to function pointers is strictly used
+     *        to circumvent compiler optimization
+     *        although resulting benchmarks show mostly
+     *        the overhead implied by applying this construct */
     auto success =
-      []{ return success_t{}; };
-    auto nothrow_try_catch =
-      [&]{ try { return success(); }
-           catch( ... ) {} };
+      ::plain_success;
+    auto success_try_catch =
+      ::success_try_catch;
+    auto no_error =
+      []() noexcept -> mry::error_t
+        { return {}; };
 
-    BENCHMARK( "{baseline}: try-catch : {surely} return success" )
-    { return nothrow_try_catch(); };
+    BENCHMARK( "{baseline}: {surely} return" )
+    { return success(); };
+
+    BENCHMARK( "{baseline}: {surely} return : try-catch" )
+    { return success_try_catch(); };
+
+    BENCHMARK( "error_t : {surely} return no error" )
+    { return no_error(); };
   }
 
-  SECTION( "fail" )
+  SECTION( "fail : return <void>" )
   {
     auto surely_throw =
       []{ try { throw std::exception{}; }
-          catch( ... ) {} };
+          catch(...) {} };
+    auto error =
+      []() noexcept -> mry::error_t
+        { return mry::error_t{"e"}; };
 
     BENCHMARK( "{baseline}: try-catch : {surely} throw" )
     { return surely_throw(); };
+
+    BENCHMARK( "error_t : return error" )
+    { return error(); };
   }
 }
 

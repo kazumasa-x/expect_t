@@ -17,12 +17,56 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+#include "mry/error_t.h"
+
 #include <catch2/catch_test_macros.hpp>
+#include <string>
 
 namespace {
 
-TEST_CASE( "expect<T> semantics", "[expect<T>]" )
+TEST_CASE( "error_t semantics", "[expect<T>][error_t]" )
 {
+  using std::string_literals::operator"" s;
+
+  SECTION( "empty : no error condition met" )
+  {
+    auto error =
+      mry::error_t{};
+
+    REQUIRE( !error );
+    REQUIRE( !error.holds_error() );
+  }
+
+  SECTION( "error condition met" )
+  {
+    auto expect =
+      "e"s;
+    auto error =
+      mry::error_t{ expect };
+
+    REQUIRE( error );
+    REQUIRE( error.holds_error() );
+    REQUIRE( expect == error.get() );
+  }
+
+  SECTION( "return" )
+  {
+    auto success =
+      []() noexcept -> mry::error_t
+        { return {}; };
+    auto expect =
+      "e"s;
+    auto fail =
+      [expect]() noexcept -> mry::error_t 
+        { return mry::error_t{expect}; };
+
+    REQUIRE( !success().holds_error() );
+    REQUIRE( !success() );
+
+    REQUIRE( fail().holds_error() );
+    REQUIRE( fail() );
+    REQUIRE( expect == fail().get() );
+  }
 }
 
 } // namespace

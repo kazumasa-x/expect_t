@@ -23,6 +23,7 @@ target_sources( units
   PRIVATE expects.cc )
 
 target_link_libraries( units
-  PRIVATE expect_t::testcore )
+  PRIVATE mry::expect_t
+          expect_t::testcore )
 
 catch_discover_tests( units )
