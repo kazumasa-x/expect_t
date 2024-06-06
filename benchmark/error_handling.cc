@@ -17,11 +17,14 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+#include "mry/expect.h"
 #include "mry/error_t.h"
 
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
+#include <iostream>
+#include <variant>
 #include <vector>
 
 namespace {
@@ -41,16 +44,15 @@ auto plain_success()
 auto success_try_catch()
   -> void
 try { return ; }
-catch( ... ) {}
+catch( ... ) { return; }
 
 
-TEST_CASE( "error reporting mechanisms"
-         , "[benchmark][expect<T>][reporting]" )
+TEST_CASE( "benchmark error_t", "[benchmark][error_t]" )
 {
   using success_t =
     std::vector<int>;
 
-  SECTION( "success : return <void>" )
+  SECTION( "success" )
   {
     /* @note: binding to function pointers is strictly used
      *        to circumvent compiler optimization
@@ -74,11 +76,11 @@ TEST_CASE( "error reporting mechanisms"
     { return no_error(); };
   }
 
-  SECTION( "fail : return <void>" )
+  SECTION( "fail" )
   {
     auto surely_throw =
       []{ try { throw std::exception{}; }
-          catch(...) {} };
+          catch(...) { return; } };
     auto error =
       []() noexcept -> mry::error_t
         { return mry::error_t{"e"}; };
@@ -89,6 +91,72 @@ TEST_CASE( "error reporting mechanisms"
     BENCHMARK( "error_t : return error" )
     { return error(); };
   }
+}
+
+TEST_CASE( "benchmark expect<T>", "[benchmark][expect<T>]" )
+{
+  using success_t =
+    std::vector<int>;
+  using variant_t =
+    std::variant< success_t
+                , mry::error_t >;
+  using expect_t =
+    mry::expect<success_t>;
+
+  SECTION( "success" )
+  {
+    auto success =
+      []{ return success_t{}; };
+    auto nothrow_try_catch =
+      [&]() -> success_t
+         { try { return success(); }
+           catch( ... ) { return success_t{}; } };
+    auto variant_success =
+      [&]() noexcept -> variant_t
+         { return success_t{}; };
+    auto expect_success =
+      [&]() noexcept -> expect_t
+         { return success_t{}; };
+
+    BENCHMARK( "{baseline}: {surely} return success" )
+    { return success(); };
+
+    BENCHMARK( "{baseline}: try-catch : {surely} return success" )
+    { return nothrow_try_catch(); };
+
+    BENCHMARK( "{baseline}: std::variant : {surely} return success" )
+    { return variant_success(); };
+
+    BENCHMARK( "expect<T> : {surely} return success" )
+    { return variant_success(); };
+  }
+
+  SECTION( "fail" )
+  {
+    auto surely_throw =
+      []() -> success_t
+        { try { throw std::exception{}; }
+          catch( ... ) { return success_t{}; } };
+    auto variant_fail =
+      [&]() noexcept -> variant_t
+         { return mry::error_t{"e"}; };
+    auto expect_fail =
+      [&]() noexcept -> expect_t
+         { return mry::error_t{"e"}; };
+
+    BENCHMARK( "{baseline}: try-catch : {surely} throw" )
+    { return surely_throw(); };
+
+    BENCHMARK( "{baseline}: variant : {surely} return fail" )
+    { return variant_fail(); };
+
+    BENCHMARK( "expect<T> : {surely} return fail" )
+    { return expect_fail(); };
+  }
+
+  std::cout << "std::variant : " << sizeof(variant_t) << " [B]\n"
+            << "expect<T>    : " << sizeof(expect_t)  << " [B]\n"
+            << std::endl;
 }
 
 } //< namespace
