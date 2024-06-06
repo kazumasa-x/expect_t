@@ -1,0 +1,9 @@
+bootstrap.sh
+ci.sh
+
+__*
+.build-*
+
+**.o
+**.a
+**.so
