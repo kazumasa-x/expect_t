@@ -20,7 +20,8 @@
 add_executable( units )
 
 target_sources( units
-  PRIVATE expects.cc )
+  PRIVATE examples.cc
+          expects.cc )
 
 target_link_libraries( units
   PRIVATE mry::expect_t
