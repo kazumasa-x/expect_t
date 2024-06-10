@@ -1,3 +1,5 @@
+![cover](misc/calligraphy.jpg)
+
 expect\<T>
 ==========
 
